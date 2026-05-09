@@ -9,6 +9,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Force UTF-8 output on Windows terminals
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
 OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
@@ -26,25 +31,47 @@ def _run_live(cmd: str, cwd: Path | None = None) -> None:
     subprocess.run(cmd, shell=True, check=True, cwd=cwd)
 
 
+def _refresh_path_windows() -> None:
+    """Reload PATH from registry so newly installed tools are found."""
+    import os as _os
+    result = subprocess.run(
+        ["powershell", "-Command",
+         "[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + "
+         "[System.Environment]::GetEnvironmentVariable('Path','User')"],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        _os.environ["PATH"] = result.stdout.strip()
+
+
 def _install_nodejs() -> None:
     """Install Node.js automatically based on the OS."""
     print("  Node.js not found — installing automatically...")
     if OS == "Windows":
-        try:
-            _run("winget install --id OpenJS.NodeJS.LTS -e --silent --accept-package-agreements --accept-source-agreements")
-        except subprocess.CalledProcessError:
-            print("  winget failed — attempting direct download...")
-            _run(
-                'powershell -Command "'
-                '$url = \'https://nodejs.org/dist/lts/node-lts-x64.msi\'; '
-                '$out = "$env:TEMP\\nodejs.msi"; '
-                'Invoke-WebRequest $url -OutFile $out; '
-                'Start-Process msiexec -ArgumentList \'/i\',$out,\'/quiet\',\'/norestart\' -Wait"'
+        # winget exit 0 = installed, 0x89B40C4B = already installed (both are OK)
+        result = subprocess.run(
+            "winget install --id OpenJS.NodeJS.LTS -e --silent "
+            "--accept-package-agreements --accept-source-agreements",
+            shell=True,
+        )
+        _refresh_path_windows()
+        # Verify npm is now available
+        if subprocess.run("npm --version", shell=True, capture_output=True).returncode != 0:
+            # Fallback: download MSI via urllib (no PowerShell quoting issues)
+            print("  winget did not make npm available — downloading MSI directly...")
+            import urllib.request, tempfile, os as _os
+            msi_path = _os.path.join(tempfile.gettempdir(), "nodejs_lts.msi")
+            urllib.request.urlretrieve(
+                "https://nodejs.org/dist/lts/node-v20.19.0-x64.msi", msi_path
             )
+            subprocess.run(
+                f'msiexec /i "{msi_path}" /quiet /norestart',
+                shell=True, check=True,
+            )
+            _refresh_path_windows()
     elif OS == "Darwin":
         _run("brew install node")
     else:
-        # Use NodeSource for Linux (installs Node 20 LTS)
         _run("curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -")
         _run("apt-get install -y nodejs")
 
@@ -88,13 +115,8 @@ def main() -> None:
     _step(3, total_steps, "Installing frontend dependencies")
     if subprocess.run("npm --version", shell=True, capture_output=True).returncode != 0:
         _install_nodejs()
-        # Refresh PATH on Windows after install
         if OS == "Windows":
-            import os as _os
-            _os.environ["PATH"] = subprocess.run(
-                'powershell -Command "[System.Environment]::GetEnvironmentVariable(\'Path\', \'Machine\')"',
-                shell=True, capture_output=True, text=True,
-            ).stdout.strip() + ";" + _os.environ.get("PATH", "")
+            _refresh_path_windows()
     _run_live("npm install", cwd=ROOT / "frontend")
     print("  Frontend deps ✓")
 

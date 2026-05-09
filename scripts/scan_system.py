@@ -4,7 +4,12 @@ Can run standalone: python scripts/scan_system.py
 """
 import platform
 import subprocess
+import sys
 from pathlib import Path
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 def _run(cmd: str) -> str:
@@ -73,7 +78,7 @@ def scan() -> dict:
         "os_version": platform.version(),
         "cpu_cores": psutil.cpu_count(logical=True),
         "ram_gb": round(psutil.virtual_memory().total / 1e9, 1),
-        "disk_free_gb": round(psutil.disk_usage(Path.home()).free / 1e9, 1),
+        "disk_free_gb": round(psutil.disk_usage(str(Path.home().anchor)).free / 1e9, 1),
         "gpu": detect_gpu(),
         "ollama_installed": check_ollama(),
         "models_pulled": list_ollama_models(),
