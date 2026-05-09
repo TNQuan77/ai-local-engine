@@ -26,6 +26,29 @@ def _run_live(cmd: str, cwd: Path | None = None) -> None:
     subprocess.run(cmd, shell=True, check=True, cwd=cwd)
 
 
+def _install_nodejs() -> None:
+    """Install Node.js automatically based on the OS."""
+    print("  Node.js not found — installing automatically...")
+    if OS == "Windows":
+        try:
+            _run("winget install --id OpenJS.NodeJS.LTS -e --silent --accept-package-agreements --accept-source-agreements")
+        except subprocess.CalledProcessError:
+            print("  winget failed — attempting direct download...")
+            _run(
+                'powershell -Command "'
+                '$url = \'https://nodejs.org/dist/lts/node-lts-x64.msi\'; '
+                '$out = "$env:TEMP\\nodejs.msi"; '
+                'Invoke-WebRequest $url -OutFile $out; '
+                'Start-Process msiexec -ArgumentList \'/i\',$out,\'/quiet\',\'/norestart\' -Wait"'
+            )
+    elif OS == "Darwin":
+        _run("brew install node")
+    else:
+        # Use NodeSource for Linux (installs Node 20 LTS)
+        _run("curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -")
+        _run("apt-get install -y nodejs")
+
+
 def _install_ollama() -> None:
     """Install Ollama automatically based on the OS."""
     if OS == "Windows":
@@ -63,6 +86,15 @@ def main() -> None:
 
     # Step 3: Frontend dependencies
     _step(3, total_steps, "Installing frontend dependencies")
+    if subprocess.run("npm --version", shell=True, capture_output=True).returncode != 0:
+        _install_nodejs()
+        # Refresh PATH on Windows after install
+        if OS == "Windows":
+            import os as _os
+            _os.environ["PATH"] = subprocess.run(
+                'powershell -Command "[System.Environment]::GetEnvironmentVariable(\'Path\', \'Machine\')"',
+                shell=True, capture_output=True, text=True,
+            ).stdout.strip() + ";" + _os.environ.get("PATH", "")
     _run_live("npm install", cwd=ROOT / "frontend")
     print("  Frontend deps ✓")
 
@@ -107,12 +139,14 @@ def main() -> None:
         print("  .env already exists — skipped ✓")
 
     # Summary
+    node_ver = subprocess.run("node --version", shell=True, capture_output=True, text=True).stdout.strip()
     print(f"""
 ╔══════════════════════════════════════════════╗
 ║     AI Local Engine — Installation Done!    ║
 ╠══════════════════════════════════════════════╣
 ║  ✓ Backend deps      installed               ║
 ║  ✓ Frontend deps     installed               ║
+║  ✓ Node.js {node_ver:<34}║
 ║  ✓ {ollama_version:<41}║
 ║  ✓ Model  {best:<35}║
 ║  ✓ Config            .env ready              ║
