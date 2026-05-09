@@ -2,12 +2,34 @@
 Start both backend and frontend servers simultaneously.
 Run: python scripts/start.py
 """
+import os
+import platform
 import subprocess
 import sys
 import time
 from pathlib import Path
 
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _refresh_path_windows() -> None:
+    """Reload PATH from registry so tools installed after this process started are found."""
+    result = subprocess.run(
+        ["powershell", "-Command",
+         "[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + "
+         "[System.Environment]::GetEnvironmentVariable('Path','User')"],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        os.environ["PATH"] = result.stdout.strip()
+
+
+if platform.system() == "Windows":
+    _refresh_path_windows()
 
 
 def main() -> None:
