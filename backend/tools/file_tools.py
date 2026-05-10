@@ -1,6 +1,7 @@
 import os
 import subprocess
 import glob as glob_module
+import platform
 from pathlib import Path
 
 
@@ -8,6 +9,10 @@ def _resolve(working_dir: str, path: str) -> str:
     if os.path.isabs(path):
         return path
     return str(Path(working_dir) / path)
+
+
+def _is_windows() -> bool:
+    return platform.system() == "Windows"
 
 
 def make_file_tools(working_dir: str) -> list:
@@ -25,7 +30,35 @@ def make_file_tools(working_dir: str) -> list:
         os.makedirs(os.path.dirname(full) or ".", exist_ok=True)
         with open(full, "w", encoding="utf-8") as f:
             f.write(content)
-        return f"Wrote {full}"
+        # Verification
+        if os.path.exists(full):
+            return f"Successfully created/updated {full}"
+        else:
+            return f"ERROR: Failed to create {full}"
+
+    def create_file(path: str | None = None, content: str = "") -> str:
+        """Create a file with optional content."""
+        if not path:
+            return "ERROR: create_file requires a 'path' argument."
+        full = _resolve(working_dir, path)
+        os.makedirs(os.path.dirname(full) or ".", exist_ok=True)
+        with open(full, "w", encoding="utf-8") as f:
+            f.write(content)
+        # Verification
+        if os.path.exists(full) and os.path.isfile(full):
+            return f"Successfully created {full}"
+        else:
+            return f"ERROR: Failed to create {full}"
+
+    def create_directory(path: str) -> str:
+        """Create a directory and all parent directories if needed."""
+        full = _resolve(working_dir, path)
+        os.makedirs(full, exist_ok=True)
+        # Verification
+        if os.path.exists(full) and os.path.isdir(full):
+            return f"Successfully created directory {full}"
+        else:
+            return f"ERROR: Failed to create directory {full}"
 
     def edit_file(path: str, old_string: str, new_string: str) -> str:
         """Replace exactly one occurrence of old_string with new_string in a file."""
@@ -39,6 +72,8 @@ def make_file_tools(working_dir: str) -> list:
 
     def run_bash(command: str) -> str:
         """Run a shell command in the working directory. Returns stdout + stderr."""
+        # OS-aware shell
+        shell_cmd = "cmd" if _is_windows() else "/bin/bash"
         result = subprocess.run(
             command,
             shell=True,
@@ -46,6 +81,7 @@ def make_file_tools(working_dir: str) -> list:
             capture_output=True,
             text=True,
             timeout=60,
+            executable=shell_cmd if not _is_windows() else None,
         )
         output = (result.stdout + result.stderr).strip()
         return output or "(no output)"
@@ -71,4 +107,4 @@ def make_file_tools(working_dir: str) -> list:
                 pass
         return "\n".join(results) if results else "(not found)"
 
-    return [read_file, write_file, edit_file, run_bash, list_files, search_in_files]
+    return [read_file, write_file, create_file, create_directory, edit_file, run_bash, list_files, search_in_files]

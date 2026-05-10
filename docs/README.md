@@ -28,8 +28,8 @@ AI Local Engine is a full-stack coding agent with two providers:
 │         │ tools                              │
 │  ┌──────▼────────────────────────────┐      │
 │  │ file_tools + extended_tools       │      │
-│  │ read/write/edit/bash/glob/grep    │      │
-│  │ web_search/run_tests/git/lint     │      │
+│  │ read/write/create/edit/bash/glob/grep    │      │
+│  │ web_search/run_tests/run_code/git/lint     │      │
 │  └───────────────────────────────────┘      │
 └─────────────────────────────────────────────┘
                │
@@ -57,6 +57,8 @@ data: {"type": "done"}
 |---|---|
 | `read_file(path)` | Read file contents |
 | `write_file(path, content)` | Create / overwrite file |
+| `create_file(path, content)` | Create a new file with optional content |
+| `create_directory(path)` | Create a directory and parents if needed |
 | `edit_file(path, old_string, new_string)` | Surgical text replacement |
 | `run_bash(command)` | Execute shell command in working dir |
 | `list_files(pattern)` | Glob file search |
@@ -68,6 +70,7 @@ data: {"type": "done"}
 | `web_search(query)` | DuckDuckGo search |
 | `http_request(url, method, body)` | HTTP API call |
 | `run_tests(path, framework)` | pytest / jest |
+| `run_code(command, expect_errors)` | Execute a command and optionally handle errors |
 | `git_status()` | git status + diff |
 | `git_commit(message)` | Stage all + commit |
 | `lint_file(path)` | flake8 / eslint |

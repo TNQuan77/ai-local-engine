@@ -28,8 +28,8 @@ AI Local Engine là coding agent full-stack với 2 provider:
 │         │ tools                              │
 │  ┌──────▼────────────────────────────┐      │
 │  │ file_tools + extended_tools       │      │
-│  │ read/write/edit/bash/glob/grep    │      │
-│  │ web_search/run_tests/git/lint     │      │
+│  │ read/write/create/edit/bash/glob/grep    │      │
+│  │ web_search/run_tests/run_code/git/lint     │      │
 │  └───────────────────────────────────┘      │
 └─────────────────────────────────────────────┘
                │
@@ -57,6 +57,8 @@ data: {"type": "done"}
 |---|---|
 | `read_file(path)` | Đọc nội dung file |
 | `write_file(path, content)` | Tạo / ghi đè file |
+| `create_file(path, content)` | Tạo file mới với nội dung tùy chọn |
+| `create_directory(path)` | Tạo thư mục và các thư mục cha nếu cần |
 | `edit_file(path, old_string, new_string)` | Thay thế đoạn text chính xác |
 | `run_bash(command)` | Chạy lệnh shell trong working dir |
 | `list_files(pattern)` | Tìm file theo glob pattern |
@@ -68,6 +70,7 @@ data: {"type": "done"}
 | `web_search(query)` | Tìm kiếm DuckDuckGo |
 | `http_request(url, method, body)` | Gọi HTTP API |
 | `run_tests(path, framework)` | Chạy pytest / jest |
+| `run_code(command, expect_errors)` | Chạy command và xử lý lỗi tùy chọn |
 | `git_status()` | git status + diff |
 | `git_commit(message)` | Stage all + commit |
 | `lint_file(path)` | flake8 / eslint |

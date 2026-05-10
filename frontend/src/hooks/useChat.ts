@@ -97,7 +97,17 @@ export function useChat() {
     [messages]
   );
 
+  const cancelMessage = useCallback(() => {
+    abortRef.current = true;
+    setIsLoading(false);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.isStreaming ? { ...m, isStreaming: false, content: m.content + " [Cancelled]" } : m
+      )
+    );
+  }, []);
+
   const clearMessages = useCallback(() => setMessages([]), []);
 
-  return { messages, isLoading, sendMessage, clearMessages };
+  return { messages, isLoading, sendMessage, cancelMessage, clearMessages };
 }

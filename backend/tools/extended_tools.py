@@ -70,18 +70,20 @@ def git_commit(message: str, working_dir: str = ".") -> str:
     return (add.stdout + add.stderr + commit.stdout + commit.stderr).strip()
 
 
-def lint_file(path: str, working_dir: str = ".") -> str:
-    """Lint a file using flake8 (Python) or eslint (JS/TS). Returns lint output."""
-    from pathlib import Path as P
-    ext = P(path).suffix.lower()
-    if ext == ".py":
-        cmd = f"flake8 {path}"
-    elif ext in (".js", ".ts", ".jsx", ".tsx"):
-        cmd = f"npx eslint {path}"
-    else:
-        return f"No linter available for {ext} files."
-    result = subprocess.run(cmd, shell=True, cwd=working_dir, capture_output=True, text=True, timeout=30)
-    return (result.stdout + result.stderr).strip() or "No lint issues found."
+def run_code(command: str, working_dir: str = ".", expect_errors: bool = False) -> str:
+    """Run a code execution command (e.g., python script.py). If expect_errors is False and there's an error, attempt to fix common issues."""
+    result = subprocess.run(command, shell=True, cwd=working_dir, capture_output=True, text=True, timeout=120)
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode != 0 and not expect_errors:
+        # Attempt simple fixes
+        if "ModuleNotFoundError" in output:
+            # Suggest pip install
+            return f"Error: {output}\nSuggestion: Install missing module with 'pip install <module>'"
+        elif "SyntaxError" in output:
+            return f"Error: {output}\nSuggestion: Check syntax in the code."
+        else:
+            return f"Error: {output}\nSuggestion: Review the error and fix accordingly."
+    return output or "(no output)"
 
 
 def make_extended_tools(working_dir: str) -> list:
@@ -99,8 +101,12 @@ def make_extended_tools(working_dir: str) -> list:
         """Stage all changes and commit with the given message."""
         return git_commit(message, working_dir)
 
+    def _run_code(command: str, expect_errors: bool = False) -> str:
+        """Run a code execution command. If errors occur and expect_errors=False, provide suggestions."""
+        return run_code(command, working_dir, expect_errors)
+
     def _lint_file(path: str) -> str:
         """Lint a file using flake8 (Python) or eslint (JS/TS)."""
         return lint_file(path, working_dir)
 
-    return [web_search, http_request, _run_tests, _git_status, _git_commit, _lint_file]
+    return [web_search, http_request, _run_tests, _git_status, _git_commit, _run_code, _lint_file]

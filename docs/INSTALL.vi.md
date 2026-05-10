@@ -2,10 +2,7 @@
 
 ## Yêu cầu
 
-- Python 3.10+
-- Node.js 18+
-- Ollama (được cài tự động bởi installer)
-- (Tùy chọn) Anthropic API key để dùng Claude models
+Chỉ cần **Python 3.10+**. Mọi thứ còn lại (Node.js, Ollama, model) đều được cài tự động.
 
 ## Cài đặt 1 lệnh
 
@@ -13,62 +10,46 @@
 python scripts/install.py
 ```
 
-Script sẽ tự động:
-1. Kiểm tra phiên bản Python
-2. Cài dependencies Python cho backend
-3. Cài dependencies Node.js cho frontend
-4. Cài Ollama nếu chưa có
-5. Quét phần cứng và pull model phù hợp nhất
-6. Tạo file `.env` với cấu hình mặc định
+Script tự động chạy 6 bước, không cần thao tác gì thêm:
 
-## Khởi động
+| Bước | Hành động |
+|---|---|
+| 1/6 | Kiểm tra Python (≥ 3.10) |
+| 2/6 | Cài Python dependencies cho backend |
+| 3/6 | Cài Node.js dependencies cho frontend (tự cài Node.js nếu chưa có) |
+| 4/6 | Kiểm tra / cài Ollama |
+| 5/6 | Quét phần cứng → chọn model tốt nhất → pull về |
+| 6/6 | Tạo file cấu hình `.env` |
+
+Khi xong sẽ hiện bảng tóm tắt xác nhận mọi thứ đã sẵn sàng.
+
+## Khởi động ứng dụng
 
 ```bash
 python scripts/start.py
 ```
 
-- Backend: http://localhost:8000
-- Frontend: http://localhost:5173
+Khởi động cả 2 server cùng lúc:
+- **Backend API**: http://localhost:8000
+- **Frontend UI**: http://localhost:5173
 
-## Cài đặt thủ công
+Nhấn `Ctrl+C` để dừng cả hai.
 
-### Backend
-```bash
-cd backend
-pip install -r requirements.txt
-```
+## Những gì được cài tự động
 
-### Frontend
-```bash
-cd frontend
-npm install
-```
+### Node.js
+- **Windows**: qua `winget install OpenJS.NodeJS.LTS`, fallback tải MSI trực tiếp
+- **macOS**: qua `brew install node`
+- **Linux**: qua NodeSource setup script
 
 ### Ollama
-Tải từ https://ollama.com/download, sau đó pull model:
-```bash
-ollama pull llama3.2        # nhẹ
-ollama pull qwen2.5:7b      # cân bằng
-ollama pull qwen2.5:14b     # chất lượng cao (cần 16GB+ RAM)
-```
+- **Windows**: qua `winget install Ollama.Ollama`, fallback tải file `.exe`
+- **macOS**: qua `brew install ollama`
+- **Linux**: qua `curl -fsSL https://ollama.com/install.sh | sh`
 
-## Cấu hình
+### Chọn model tự động (dựa trên phần cứng)
 
-Copy `.env.example` thành `.env` và chỉnh sửa:
-
-```env
-# Provider local (mặc định)
-OLLAMA_BASE_URL=http://localhost:11434
-DEFAULT_MODEL=llama3.2
-DEFAULT_PROVIDER=local
-
-# Provider API (tùy chọn)
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-## Model đề xuất theo phần cứng
-
-| RAM | GPU VRAM | Đề xuất |
+| RAM | GPU VRAM | Model được chọn |
 |---|---|---|
 | 4–6 GB | bất kỳ | `llama3.2:1b` |
 | 6–10 GB | 0 | `llama3.2:3b` |
@@ -77,7 +58,36 @@ ANTHROPIC_API_KEY=sk-ant-...
 | bất kỳ | 6–8 GB | `llama3.2:8b` |
 | bất kỳ | 10+ GB | `qwen2.5:14b` |
 
-Chạy scanner để nhận đề xuất riêng cho máy của bạn:
+Để xem trước hệ thống sẽ chọn model nào:
 ```bash
 python scripts/scan_system.py
+```
+
+## Cấu hình
+
+Installer tự tạo file `.env`. Để tuỳ chỉnh:
+
+```env
+# Provider local (mặc định — không cần API key)
+OLLAMA_BASE_URL=http://localhost:11434
+DEFAULT_MODEL=llama3.2:3b
+DEFAULT_PROVIDER=local
+
+# Provider API (tùy chọn — cần nếu muốn dùng Claude)
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Cài đặt thủ công (nếu cần)
+
+```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+
+# Frontend
+cd frontend
+npm install
+
+# Pull model thủ công
+ollama pull llama3.2:3b
 ```

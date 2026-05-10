@@ -1,5 +1,5 @@
 import { useState, KeyboardEvent } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, X } from "lucide-react";
 
 interface ParsedInput {
   skill?: string;
@@ -17,10 +17,12 @@ function parseInput(text: string): ParsedInput {
 
 interface Props {
   onSend: (parsed: ParsedInput) => void;
+  onCancel: () => void;
   disabled: boolean;
+  isStreaming: boolean;
 }
 
-export function InputBar({ onSend, disabled }: Props) {
+export function InputBar({ onSend, onCancel, disabled, isStreaming }: Props) {
   const [value, setValue] = useState("");
 
   const handleSend = () => {
@@ -64,6 +66,15 @@ export function InputBar({ onSend, disabled }: Props) {
         >
           {disabled ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
+        {isStreaming && (
+          <button
+            onClick={onCancel}
+            className="shrink-0 p-1.5 rounded-lg bg-red-600 hover:bg-red-500 transition-colors"
+            title="Cancel current response"
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
       {isSkill && (
         <p className="text-xs text-amber-500 mt-1 px-1">Skill command detected</p>

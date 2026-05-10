@@ -17,7 +17,7 @@ export default function App() {
   const [apiKeySet, setApiKeySet] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
 
-  const { messages, isLoading, sendMessage, clearMessages } = useChat();
+  const { messages, isLoading, sendMessage, cancelMessage, clearMessages } = useChat();
 
   const loadModels = async () => {
     setLoadingModels(true);
@@ -103,7 +103,7 @@ export default function App() {
       <ChatWindow messages={messages} />
 
       {/* Input */}
-      <InputBar onSend={handleSend} disabled={isLoading || !selectedModel} />
+      <InputBar onSend={handleSend} onCancel={cancelMessage} disabled={isLoading || !selectedModel} isStreaming={isLoading} />
     </div>
   );
 }

@@ -1,58 +1,85 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Terminal, FileEdit, Search } from "lucide-react";
+import React from "react";
 import { ChatMessage } from "../hooks/useChat";
-import { SSEEvent } from "../api/client";
+import hljs from "highlight.js";
+import "highlight.js/styles/atom-one-dark.css";
+import { Copy } from "lucide-react";
 
-const TOOL_ICONS: Record<string, React.ReactNode> = {
-  run_bash: <Terminal size={12} />,
-  edit_file: <FileEdit size={12} />,
-  write_file: <FileEdit size={12} />,
-  search_in_files: <Search size={12} />,
-  Bash: <Terminal size={12} />,
-  Edit: <FileEdit size={12} />,
-  Grep: <Search size={12} />,
-};
+interface CodeBlockProps {
+  language: string;
+  code: string;
+}
 
-function ToolCallBlock({ event, resultEvent }: { event: SSEEvent; resultEvent?: SSEEvent }) {
-  const [open, setOpen] = useState(false);
-  const icon = TOOL_ICONS[event.name ?? ""] ?? <Terminal size={12} />;
+function CodeBlock({ language, code }: CodeBlockProps) {
+  const highlighted =
+    language && hljs.getLanguage(language)
+      ? hljs.highlight(code, { language, ignoreIllegals: true }).value
+      : hljs.highlightAuto(code).value;
+
+  const [copied, setCopied] = React.useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="my-1 rounded border border-gray-700 bg-gray-900 text-xs">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-amber-400 hover:bg-gray-800 rounded"
-      >
-        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        {icon}
-        <span className="font-mono font-semibold">{event.name}</span>
-        {event.input && (
-          <span className="text-gray-500 truncate max-w-xs">
-            {Object.entries(event.input)
-              .map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 40)}`)
-              .join(", ")}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="px-3 pb-2 space-y-1">
-          {event.input && (
-            <pre className="text-gray-400 overflow-x-auto">
-              {JSON.stringify(event.input, null, 2)}
-            </pre>
-          )}
-          {resultEvent?.content && (
-            <>
-              <div className="text-gray-600 text-xs mt-1">Result:</div>
-              <pre className="text-green-400 overflow-x-auto max-h-48">
-                {resultEvent.content}
-              </pre>
-            </>
-          )}
-        </div>
-      )}
+    <div className="my-3 rounded-lg overflow-hidden bg-gray-900 border border-gray-700">
+      <div className="flex items-center justify-between px-3 py-2 bg-gray-800">
+        <span className="text-xs font-mono text-gray-400">{language || "code"}</span>
+        <button
+          onClick={handleCopy}
+          className="p-1.5 hover:bg-gray-700 rounded transition-colors"
+          title="Copy code"
+        >
+          <Copy size={14} className={copied ? "text-green-400" : "text-gray-400"} />
+        </button>
+      </div>
+      <pre className="p-3 overflow-x-auto">
+        <code
+          dangerouslySetInnerHTML={{ __html: highlighted }}
+          className={`language-${language} text-xs`}
+        />
+      </pre>
     </div>
   );
+}
+
+function parseContent(content: string) {
+  const parts: React.ReactNode[] = [];
+  const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    // Add text before code block
+    if (match.index > lastIndex) {
+      parts.push(
+        <div key={`text-${lastIndex}`} className="whitespace-pre-wrap">
+          {content.slice(lastIndex, match.index)}
+        </div>
+      );
+    }
+    // Add code block
+    parts.push(
+      <CodeBlock
+        key={`code-${match.index}`}
+        language={match[1]}
+        code={match[2].trim()}
+      />
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(
+      <div key={`text-${lastIndex}`} className="whitespace-pre-wrap">
+        {content.slice(lastIndex)}
+      </div>
+    );
+  }
+
+  return parts.length > 0 ? parts : <div className="whitespace-pre-wrap">{content}</div>;
 }
 
 interface Props {
@@ -72,10 +99,6 @@ export function MessageBubble({ message }: Props) {
     );
   }
 
-  // Build assistant content with inline tool call blocks
-  const toolCallEvents = message.events.filter((e) => e.type === "tool_call");
-  const toolResultEvents = message.events.filter((e) => e.type === "tool_result");
-
   return (
     <div className="flex justify-start mb-4">
       <div className="max-w-[85%] w-full">
@@ -88,18 +111,10 @@ export function MessageBubble({ message }: Props) {
         </div>
 
         {message.content && (
-          <div className="bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 text-sm text-gray-100 whitespace-pre-wrap mb-1">
-            {message.content}
+          <div className="bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 text-sm text-gray-100">
+            {parseContent(message.content)}
           </div>
         )}
-
-        {toolCallEvents.map((tc, i) => (
-          <ToolCallBlock
-            key={i}
-            event={tc}
-            resultEvent={toolResultEvents[i]}
-          />
-        ))}
       </div>
     </div>
   );
